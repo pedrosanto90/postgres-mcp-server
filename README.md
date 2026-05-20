@@ -20,12 +20,26 @@ A TypeScript MCP (Model Context Protocol) server that connects directly to a Pos
 | `get_function` | Returns the full `CREATE OR REPLACE FUNCTION ...` definition via `pg_get_functiondef` |
 | `execute_query` | Runs **only SELECT/WITH** queries inside a `READ ONLY` transaction with automatic `ROLLBACK` and `LIMIT 500` |
 | `explain_query` | `EXPLAIN [ANALYZE] (FORMAT JSON)` with a summary (`total_cost`, `actual_rows`, `planning_time`, `execution_time`) |
-| `create_function` | Executes `CREATE OR REPLACE FUNCTION ...` and returns the created function as confirmation |
+| `create_function` | Validates and **prepares** a `CREATE OR REPLACE FUNCTION ...` definition. Does **not** write to the database — returns the prepared definition for review. |
+| `apply_function` | **Explicit-consent.** Executes a `CREATE OR REPLACE FUNCTION ...` against the database and returns the created function. Should only be called when the user explicitly asks to apply/send the function. |
 
 ### Safety guarantees
 - `execute_query` rejects anything that does not start with `SELECT` or `WITH` and runs inside a `READ ONLY` transaction followed by `ROLLBACK`.
 - `explain_query` with `analyze: true` runs inside a transaction with `ROLLBACK` — no writes are persisted.
+- `create_function` only validates and prepares a definition; it does **not** touch the database. The actual write is performed by `apply_function`.
 - The `pg_catalog` and `information_schema` schemas are excluded from all introspection queries.
+
+### Explicit-consent tools
+
+Some tools mutate the database or have side effects beyond read-only introspection. The MCP server itself does **not** enforce gating on these — enforcement lives in the LLM client. The convention is: a model must only invoke an explicit-consent tool when the user explicitly asks for that action in the current turn. Preparing, suggesting, or showing a dry-run is fine; applying is not, unless the user said so.
+
+Currently explicit-consent:
+
+| Tool | Effect | How to prepare without applying |
+|---|---|---|
+| `apply_function` | Writes a `CREATE OR REPLACE FUNCTION ...` to the database | Use `create_function` to validate and review the definition first |
+
+When adding any new tool that writes to the database, sends external requests, or otherwise has user-visible side effects, follow the same convention: mark it clearly in the tool description in `src/index.ts`, add it to the table above, and prefer splitting prepare/apply into two tools so the prepare step stays freely callable.
 
 ---
 
@@ -164,7 +178,8 @@ In a conversation with the model you can ask things like:
 - *"Show the definition of the `public.calculate_total` function."*
 - *"Run `SELECT count(*) FROM users WHERE created_at > now() - interval '7 days'`."*
 - *"`EXPLAIN ANALYZE` this query: `SELECT ...`."*
-- *"Create the function `CREATE OR REPLACE FUNCTION public.foo(...) RETURNS ... AS $$ ... $$ LANGUAGE plpgsql;`."*
+- *"Prepare the function `CREATE OR REPLACE FUNCTION public.foo(...) RETURNS ... AS $$ ... $$ LANGUAGE plpgsql;`."* — runs `create_function` (validates only).
+- *"Apply that function to the database."* — explicit consent: runs `apply_function`.
 
 ---
 
@@ -185,12 +200,13 @@ src/
     ├── getFunction.ts
     ├── executeQuery.ts
     ├── explainQuery.ts
-    └── createFunction.ts
+    ├── createFunction.ts
+    └── applyFunction.ts
 ```
 
 ## Troubleshooting
 
 - **"DATABASE_URL environment variable is required"** — set the variable in `.env` or in the `env` block of your MCP client config.
 - **"Failed to connect to database"** — verify host/port/credentials and that the database accepts connections from your machine (`pg_hba.conf`, firewall).
-- **`execute_query` rejects a valid query** — only queries starting with `SELECT` or `WITH` are accepted. For anything else (DDL, DML), use `create_function` (functions only) or another tool.
+- **`execute_query` rejects a valid query** — only queries starting with `SELECT` or `WITH` are accepted. For anything else (DDL, DML), use `create_function` + `apply_function` (functions only) or another tool.
 - **Server logs** — the server writes to `stderr` (`[postgres-mcp] ...`); in Claude Code they show up via `claude mcp logs postgres` or in the Claude Desktop logs.
