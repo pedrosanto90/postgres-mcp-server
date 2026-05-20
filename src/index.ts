@@ -15,6 +15,7 @@ import { getFunctionSchema, getFunctionHandler } from './tools/getFunction.js';
 import { executeQuerySchema, executeQueryHandler } from './tools/executeQuery.js';
 import { explainQuerySchema, explainQueryHandler } from './tools/explainQuery.js';
 import { createFunctionSchema, createFunctionHandler } from './tools/createFunction.js';
+import { applyFunctionSchema, applyFunctionHandler } from './tools/applyFunction.js';
 
 async function main() {
   try {
@@ -70,9 +71,16 @@ async function main() {
 
   server.tool(
     'create_function',
-    'Cria ou substitui uma função na base de dados. Devolve a função criada como confirmação.',
+    'Valida e prepara uma definição de função (CREATE OR REPLACE FUNCTION ...). NÃO escreve na base de dados — apenas devolve a definição preparada. Para aplicar use apply_function, e só quando o utilizador pedir explicitamente.',
     createFunctionSchema,
     createFunctionHandler
+  );
+
+  server.tool(
+    'apply_function',
+    'Aplica uma definição de função na base de dados (executa o CREATE OR REPLACE FUNCTION). APENAS deve ser chamada quando o utilizador pedir explicitamente para aplicar/enviar a função à BD; caso contrário use create_function para apenas preparar.',
+    applyFunctionSchema,
+    applyFunctionHandler
   );
 
   const transport = new StdioServerTransport();
