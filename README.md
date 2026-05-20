@@ -77,11 +77,10 @@ npm run dev
 
 ---
 
-## Usage with Claude Desktop / Claude Code
+## Usage with Claude Desktop
 
-Edit the Claude config file:
+Claude Desktop is available only on macOS and Windows (there is no official Linux build). Edit the Claude Desktop config file:
 
-- **Linux:** `~/.config/Claude/claude_desktop_config.json`
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
@@ -92,7 +91,7 @@ Edit the Claude config file:
   "mcpServers": {
     "postgres": {
       "command": "node",
-      "args": ["/home/pedro/Documents/projects/postgresqlMCP/dist/index.js"],
+      "args": ["/absolute/path/to/postgresqlMCP/dist/index.js"],
       "env": {
         "DATABASE_URL": "postgresql://user:password@localhost:5432/database"
       }
@@ -108,7 +107,7 @@ Edit the Claude config file:
   "mcpServers": {
     "postgres": {
       "command": "npx",
-      "args": ["tsx", "/home/pedro/Documents/projects/postgresqlMCP/src/index.ts"],
+      "args": ["tsx", "/absolute/path/to/postgresqlMCP/src/index.ts"],
       "env": {
         "DATABASE_URL": "postgresql://user:password@localhost:5432/database"
       }
@@ -117,12 +116,18 @@ Edit the Claude config file:
 }
 ```
 
-### Claude Code (CLI) — per-project registration
+Restart Claude Desktop after editing the file.
 
-From the project directory where you want to use the MCP server:
+---
+
+## Usage with Claude Code (CLI / IDE)
+
+Claude Code runs on Linux, macOS, and Windows. The recommended way to register the MCP server is via the `claude mcp add` command — it writes the entry to `~/.claude.json` for you.
+
+From any directory:
 
 ```bash
-claude mcp add postgres -- node /home/pedro/Documents/projects/postgresqlMCP/dist/index.js
+claude mcp add postgres -- node /absolute/path/to/postgresqlMCP/dist/index.js
 ```
 
 To pass `DATABASE_URL` to the process:
@@ -130,7 +135,15 @@ To pass `DATABASE_URL` to the process:
 ```bash
 claude mcp add postgres \
   --env DATABASE_URL=postgresql://user:password@localhost:5432/database \
-  -- node /home/pedro/Documents/projects/postgresqlMCP/dist/index.js
+  -- node /absolute/path/to/postgresqlMCP/dist/index.js
+```
+
+Dev mode (no build, uses `tsx`):
+
+```bash
+claude mcp add postgres \
+  --env DATABASE_URL=postgresql://user:password@localhost:5432/database \
+  -- npx tsx /absolute/path/to/postgresqlMCP/src/index.ts
 ```
 
 List and inspect:
@@ -140,7 +153,7 @@ claude mcp list
 claude mcp get postgres
 ```
 
-After adding, restart Claude Code and the tools (`get_table_details`, `execute_query`, etc.) will be available automatically.
+After adding, restart Claude Code and the tools (`get_table_details`, `execute_query`, etc.) will be available automatically. If you prefer editing the config file directly, MCP servers live under the `mcpServers` key in `~/.claude.json` (same path on Linux, macOS, and Windows).
 
 ---
 
