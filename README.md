@@ -153,7 +153,45 @@ claude mcp list
 claude mcp get postgres
 ```
 
-After adding, restart Claude Code and the tools (`get_table_details`, `execute_query`, etc.) will be available automatically. If you prefer editing the config file directly, MCP servers live under the `mcpServers` key in `~/.claude.json` (same path on Linux, macOS, and Windows).
+After adding, restart Claude Code and the tools (`get_table_details`, `execute_query`, etc.) will be available automatically.
+
+### Editing `~/.claude.json` directly
+
+If you prefer to edit the config file by hand instead of using `claude mcp add`, MCP servers live under the `mcpServers` key in `~/.claude.json` (same path on Linux, macOS, and Windows). Example entry:
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/absolute/path/to/postgresqlMCP/dist/index.js"],
+      "env": {
+        "DATABASE_URL": "postgresql://user:password@localhost:5432/database"
+      }
+    }
+  }
+}
+```
+
+Dev mode (no build, uses `tsx`):
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/postgresqlMCP/src/index.ts"],
+      "env": {
+        "DATABASE_URL": "postgresql://user:password@localhost:5432/database"
+      }
+    }
+  }
+}
+```
+
+`~/.claude.json` also contains other Claude Code state (project history, etc.) — only edit the `mcpServers` object and keep the rest untouched. Restart Claude Code after saving.
 
 ---
 
